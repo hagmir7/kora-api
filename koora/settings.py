@@ -23,7 +23,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-2!in%k^u0$2s%-@f466!(55!i3)890wlhl__#*t00#a3mcvws+'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = []
 
@@ -130,16 +130,34 @@ CORS_ALLOW_ALL_ORIGINS = True
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "{levelname} {asctime} {module} {message}",
+            "style": "{",
+        },
+        "simple": {
+            "format": "{levelname} {message}",
+            "style": "{",
+        },
+    },
     "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "simple",
+        },
         "file": {
-            "level": "DEBUG",
             "class": "logging.FileHandler",
-            "filename": "logs/debug.log",
+            "filename": "django.log",
+            "formatter": "verbose",
         },
     },
     "loggers": {
         "django": {
-            "handlers": ["file"],
+            "handlers": ["console", "file"],
+            "level": "INFO",
+        },
+        "main": {  # Your custom app
+            "handlers": ["console", "file"],
             "level": "DEBUG",
             "propagate": True,
         },
