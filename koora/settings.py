@@ -23,9 +23,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-2!in%k^u0$2s%-@f466!(55!i3)890wlhl__#*t00#a3mcvws+'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
-
-ALLOWED_HOSTS = ["*"]
+DEBUG = True
+ALLOWED_HOSTS = ["facepy.com", "fifa.facepy.com", "127.0.0.1"]
 
 
 # Application definition
@@ -125,6 +124,16 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 CORS_ALLOW_ALL_ORIGINS = True
+
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://localhost:8000",
+    "https://www.freewsad.com",
+    "https://freewsad.com",
+    "http://index.freesad.com",
+    "http://next.freesad.com",
+]
 
 
 LOGGING = {

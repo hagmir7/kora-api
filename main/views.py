@@ -169,7 +169,8 @@ class MatchDataExtractor(View):
 
     def get(self, request):
         try:
-            html = send_safe_request("https://jdwel.com/today/")
+            date = request.GET.get('date')
+            html = send_safe_request(f"https://jdwel.com/matches/?date={date}")
             matches_data = self.extract_matches_fast(html)
             return JsonResponse(
                 {
