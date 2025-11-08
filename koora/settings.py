@@ -24,7 +24,7 @@ SECRET_KEY = 'django-insecure-2!in%k^u0$2s%-@f466!(55!i3)890wlhl__#*t00#a3mcvws+
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
-ALLOWED_HOSTS = ["facepy.com", "fifa.facepy.com", "127.0.0.1"]
+ALLOWED_HOSTS = ["facepy.com", "fifa.facepy.com", "127.0.0.1", "localhost"]
 
 
 # Application definition
