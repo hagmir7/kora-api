@@ -8,8 +8,107 @@ from urllib.parse import urljoin
 import re
 from functools import lru_cache
 from datetime import datetime, timedelta
+from django.db import IntegrityError, transaction
+from rest_framework import viewsets, status, mixins, generics, permissions
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated, AllowAny
+from rest_framework.decorators import action
+from rest_framework.filters import SearchFilter, OrderingFilter
+from django_filters.rest_framework import DjangoFilterBackend
+from . import models, serializers
+from django.contrib.auth import get_user_model
+from rest_framework.views import APIView
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from rest_framework_simplejwt.tokens import RefreshToken, TokenError
+
+
+from .serializers import (
+    RegisterSerializer,
+    LoginSerializer,
+    UserSerializer,
+    ChangePasswordSerializer,
+)
+
+
+from rest_framework.pagination import PageNumberPagination
+
+
+class BlogPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = "page_size"
+    max_page_size = 100
+
+
+User = get_user_model()
+
 
 logger = logging.getLogger(__name__)
+
+
+class RegisterView(generics.CreateAPIView):
+    serializer_class = RegisterSerializer
+    permission_classes = [AllowAny]
+
+
+class LoginView(APIView):
+    """
+    Optional: you can use rest_framework_simplejwt.views.TokenObtainPairView instead.
+    This view returns tokens and user info via LoginSerializer.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        serializer = LoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        return Response(serializer.validated_data, status=status.HTTP_200_OK)
+
+
+class LogoutView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        """
+        Blacklist refresh token. Client should send {"refresh": "<refresh_token>"}.
+        """
+        refresh_token = request.data.get("refresh")
+        if not refresh_token:
+            return Response({"detail": "Refresh token required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+        except TokenError as e:
+            return Response({"detail": "Invalid token."}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ProfileView(generics.RetrieveUpdateAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = UserSerializer
+
+    def get_object(self):
+        return self.request.user
+
+
+class ChangePasswordView(generics.UpdateAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = ChangePasswordSerializer
+
+    def get_object(self):
+        return self.request.user
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["user"] = self.request.user
+        return context
+
+    def update(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data, context=self.get_serializer_context())
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({"detail": "Password updated successfully."})
+
 
 # Simple in-memory cache
 _cache = {}
@@ -305,3 +404,183 @@ class MatchDataExtractor(View):
             "away_team": {"name": away_name, "logo": away_logo, "score": away_score},
             "match_time": match_time,
         }
+
+
+# Generic base viewset that sets common filter backends and permission
+class BaseModelViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticatedOrReadOnly]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    pagination_class = None  # keep default; set custom pagination in settings if desired
+
+
+class ContinentViewSet(BaseModelViewSet):
+    queryset = models.Continent.objects.all()
+    serializer_class = serializers.ContinentSerializer
+    filterset_fields = ["name", "code"]
+    search_fields = ["name", "code"]
+    ordering_fields = ["name", "id"]
+
+
+class CountryViewSet(BaseModelViewSet):
+    queryset = models.Country.objects.select_related("continent").all()
+    serializer_class = serializers.CountrySerializer
+    filterset_fields = ["name", "code", "continent"]
+    search_fields = ["name", "code"]
+    ordering_fields = ["name", "id"]
+
+
+class CityViewSet(BaseModelViewSet):
+    queryset = models.City.objects.select_related("country").all()
+    serializer_class = serializers.CitySerializer
+    filterset_fields = ["name", "country"]
+    search_fields = ["name"]
+    ordering_fields = ["name", "id"]
+
+
+class TeamViewSet(BaseModelViewSet):
+    queryset = models.Team.objects.select_related("country", "city").all()
+    serializer_class = serializers.TeamSerializer
+    filterset_fields = ["country", "city", "code"]
+    search_fields = ["name", "code"]
+    ordering_fields = ["name", "id"]
+
+
+class PlayerViewSet(BaseModelViewSet):
+    queryset = models.Player.objects.select_related("nationality").all()
+    serializer_class = serializers.PlayerSerializer
+    filterset_fields = ["nationality", "position", "code"]
+    search_fields = ["name", "arabic_name", "code"]
+    ordering_fields = ["name", "id"]
+
+
+class ContractViewSet(BaseModelViewSet):
+    queryset = models.Contract.objects.select_related("player", "team").all()
+    serializer_class = serializers.ContractSerializer
+    filterset_fields = ["player", "team", "start_date", "end_date"]
+    search_fields = ["player__name", "team__name"]
+    ordering_fields = ["start_date", "end_date"]
+
+
+class CompetitionViewSet(BaseModelViewSet):
+    queryset = models.Competition.objects.select_related("country").all()
+    serializer_class = serializers.CompetitionSerializer
+    filterset_fields = ["type", "country", "season"]
+    search_fields = ["name", "title", "season"]
+    ordering_fields = ["name", "season"]
+
+
+class SeasonViewSet(BaseModelViewSet):
+    queryset = models.Season.objects.select_related("competition").all()
+    serializer_class = serializers.SeasonSerializer
+    filterset_fields = ["competition", "name", "start_date", "end_date"]
+    search_fields = ["name", "competition__name"]
+    ordering_fields = ["start_date", "end_date"]
+
+
+class GroupViewSet(BaseModelViewSet):
+    queryset = models.Group.objects.select_related("season", "competition").prefetch_related("teams").all()
+    serializer_class = serializers.GroupSerializer
+    filterset_fields = ["season", "competition"]
+    search_fields = ["name"]
+    ordering_fields = ["name", "id"]
+
+
+class MatchViewSet(BaseModelViewSet):
+    queryset = models.Match.objects.select_related("competition", "home_team", "away_team").all()
+    serializer_class = serializers.MatchSerializer
+    filterset_fields = ["competition", "home_team", "away_team", "date_time", "status"]
+    search_fields = ["home_team__name", "away_team__name"]
+    ordering_fields = ["date_time", "status"]
+
+    def perform_create(self, serializer):
+        # Example: wrap save in a transaction to be safe if many related objects are touched
+        with transaction.atomic():
+            serializer.save()
+
+
+class MatchEventViewSet(BaseModelViewSet):
+    queryset = models.MatchEvent.objects.select_related("match", "player").all()
+    serializer_class = serializers.MatchEventSerializer
+    filterset_fields = ["match", "player", "event_type", "minute"]
+    search_fields = ["match__home_team__name", "match__away_team__name"]
+    ordering_fields = ["minute", "id"]
+
+
+class SeasonTeamViewSet(BaseModelViewSet):
+    queryset = models.SeasonTeam.objects.select_related("season", "team").all()
+    serializer_class = serializers.SeasonTeamSerializer
+    filterset_fields = ["season", "team", "position"]
+    search_fields = ["team__name"]
+    ordering_fields = ["points", "position"]
+
+
+class SeasonMatchViewSet(BaseModelViewSet):
+    queryset = models.SeasonMatch.objects.select_related("season", "match").all()
+    serializer_class = serializers.SeasonMatchSerializer
+    filterset_fields = ["season", "match", "round"]
+    search_fields = ["match__home_team__name", "match__away_team__name"]
+    ordering_fields = ["round"]
+
+
+class SeasonPlayerViewSet(BaseModelViewSet):
+    queryset = models.SeasonPlayer.objects.select_related("season", "player", "team").all()
+    serializer_class = serializers.SeasonPlayerSerializer
+    filterset_fields = ["season", "player", "team"]
+    search_fields = ["player__name", "team__name"]
+    ordering_fields = ["goals", "assists", "rating"]
+
+
+class CategoryViewSet(BaseModelViewSet):
+    queryset = models.Category.objects.all()
+    serializer_class = serializers.CategorySerializer
+    filterset_fields = ["name"]
+    search_fields = ["name"]
+    ordering_fields = ["name"]
+
+
+class BlogViewSet(BaseModelViewSet):
+    queryset = (
+        models.Blog.objects.select_related("team", "match", "category")
+        .prefetch_related("comments")
+        .all()
+    )
+    serializer_class = serializers.BlogSerializer
+    filterset_fields = ["team", "match", "category", "created_at"]
+    search_fields = ["title", "description", "body", "tags"]
+    ordering_fields = ["created_at", "title"]
+    ordering = ["-created_at"]  # default: newest first
+    pagination_class = BlogPagination
+
+    def perform_create(self, serializer):
+        max_tries = 3
+        for attempt in range(max_tries):
+            try:
+                with transaction.atomic():
+                    return serializer.save()
+            except IntegrityError:
+                if attempt + 1 == max_tries:
+                    raise
+                continue
+
+
+class NewsCommentViewSet(viewsets.ModelViewSet):
+    """
+    Allow anyone to create comments, but only authenticated users or staff to approve / delete.
+    You can adjust permissions as needed (e.g., moderate comments automatically).
+    """
+    queryset = models.NewsComment.objects.select_related("blog", "parent").all()
+    serializer_class = serializers.NewsCommentSerializer
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ["blog", "user_name", "is_approved", "created_at"]
+    search_fields = ["user_name", "content"]
+    ordering_fields = ["created_at"]
+
+    def get_permissions(self):
+        # allow anonymous users to create comments but require auth for non-safe methods except create
+        if self.action == "create":
+            return [AllowAny()]
+        return [IsAuthenticatedOrReadOnly()]
+
+    def perform_create(self, serializer):
+        # create comment (no extra behavior here) -- moderation flag defaults to False
+        serializer.save()
