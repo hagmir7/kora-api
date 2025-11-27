@@ -16,6 +16,8 @@ import os
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+CPANEL = str(os.environ.get("CPANEL")) == "1"
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
@@ -143,6 +145,29 @@ CORS_ALLOWED_ORIGINS = [
     "http://next.freesad.com",
 ]
 
+# Mysql connection
+if CPANEL:
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SECURE_SSL_REDIRECT = True
+
+    DATABASES = {
+        "default": {
+            "ENGINE": os.environ.get("DB_ENGINE"),
+            "NAME": os.environ.get("DB_NAME"),
+            "USER": os.environ.get("DB_USER"),
+            "PASSWORD": os.environ.get("DB_PASSWORD"),
+            "HOST": os.environ.get("DB_HOST"),  # Typically 'localhost' or '127.0.0.1'
+            "PORT": os.environ.get("DB_PORT"),  # Typically '3306'
+            "OPTIONS": {
+                "sql_mode": "STRICT_TRANS_TABLES",
+                "charset": "utf8mb4",
+                "use_unicode": True,
+            },
+        }
+    }
+
+
+# Logs
 
 LOGGING = {
     "version": 1,
