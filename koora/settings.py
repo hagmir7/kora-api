@@ -18,15 +18,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 CPANEL = str(os.environ.get("CPANEL")) == "1"
 
-
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
-
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-2!in%k^u0$2s%-@f466!(55!i3)890wlhl__#*t00#a3mcvws+'
+SECRET_KEY = str(os.environ.get("SECRET_KEY"))
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = str(os.environ.get("DEBUG")) == "1"
+
 ALLOWED_HOSTS = ["facepy.com", "fifa.facepy.com", "127.0.0.1", "localhost"]
 
 
@@ -152,7 +148,7 @@ if CPANEL:
 
     DATABASES = {
         "default": {
-            "ENGINE": os.environ.get("DB_ENGINE"),
+            "ENGINE": "django.db.backends.mysql",
             "NAME": os.environ.get("DB_NAME"),
             "USER": os.environ.get("DB_USER"),
             "PASSWORD": os.environ.get("DB_PASSWORD"),
