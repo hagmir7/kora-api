@@ -113,7 +113,7 @@ class ChangePasswordView(generics.UpdateAPIView):
 # Simple in-memory cache
 _cache = {}
 CACHE_DURATION = 60  # seconds
-
+import random
 
 def send_safe_request(url, timeout=15, use_js=False):
     """
@@ -138,9 +138,9 @@ def send_safe_request(url, timeout=15, use_js=False):
 
     api_url = "http://api.scraperapi.com"
     params = {
-        "api_key": SCRAPER_API_KEY,
+        "api_key":  random.choice(SCRAPER_API_KEY),
         "url": url,
-        "render": "true" if use_js else "false",  # Control JS rendering
+        "render": "true" if use_js else "false",
     }
 
     try:
