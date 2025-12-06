@@ -119,7 +119,14 @@ def send_safe_request(url, timeout=15, use_js=False):
     """
     Optimized request - JS rendering only when needed
     """
-    SCRAPER_API_KEY = "6c49e45c1661f242378ca489f92b6ede"
+    SCRAPER_API_KEY = [
+        "d0a075b5a0bcdefcaabdd16757067f0f",
+        "2d118deea43615910a5ed5cc6f8f56fa",
+        "4c64b63e0a8ebf500aaa60c2514e6e8f",
+        "d0bae26ea5465f92fbe33e3fa3d2e850",
+        "b9573123f02ebb9fdfcd6f4cace5fda5",
+        "6c49e45c1661f242378ca489f92b6ede",
+    ]
 
     # Check cache first
     cache_key = f"{url}_{use_js}"
@@ -548,8 +555,10 @@ class BlogViewSet(BaseModelViewSet):
     filterset_fields = ["team", "match", "category", "created_at"]
     search_fields = ["title", "description", "body", "tags"]
     ordering_fields = ["created_at", "title"]
-    ordering = ["-created_at"]  # default: newest first
+    ordering = ["-created_at"]
     pagination_class = BlogPagination
+
+    lookup_field = "slug"
 
     def perform_create(self, serializer):
         max_tries = 3
