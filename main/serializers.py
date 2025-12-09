@@ -251,7 +251,7 @@ class CompetitionSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Competition
         fields = [
-            "id", "name", "title", "slug", "country", "country_id",
+            "id", "name", "title", "slug", "logo", "country", "country_id",
             "type", "season", "description", "code", "body"
         ]
 

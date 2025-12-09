@@ -136,6 +136,7 @@ class Competition(models.Model):
     season = models.CharField(max_length=50)
     description = models.TextField(blank=True, null=True)
     code = models.CharField(max_length=10, blank=True, null=True)
+    logo = models.ImageField(upload_to="competitions/", blank=True, null=True)
     body = models.TextField(blank=True, null=True)
     slug = models.SlugField(max_length=200, unique=True, blank=True)
 

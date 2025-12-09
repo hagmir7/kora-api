@@ -21,8 +21,7 @@ CPANEL = str(os.environ.get("CPANEL")) == "1"
 
 SECRET_KEY = str(os.environ.get("SECRET_KEY"))
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = str(os.environ.get("DEBUG")) == "1"
+DEBUG = True  # str(os.environ.get("DEBUG")) == "1"
 
 ALLOWED_HOSTS = ["facepy.com", "fifa.facepy.com", "127.0.0.1", "localhost"]
 
@@ -133,7 +132,7 @@ STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 MEDIA_URL = "/media/"
-MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+MEDIA_ROOT = os.environ.get("MEDIA_ROOT", os.path.join(BASE_DIR, "media"))
 
 
 CORS_ALLOW_ALL_ORIGINS = True

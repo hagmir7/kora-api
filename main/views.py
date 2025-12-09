@@ -21,6 +21,8 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 
+from .models import Blog
+
 
 from .serializers import (
     RegisterSerializer,
@@ -474,6 +476,7 @@ class CompetitionViewSet(BaseModelViewSet):
     filterset_fields = ["type", "country", "season"]
     search_fields = ["name", "title", "season"]
     ordering_fields = ["name", "season"]
+    lookup_field = "slug"
 
 
 class SeasonViewSet(BaseModelViewSet):
@@ -570,6 +573,16 @@ class BlogViewSet(BaseModelViewSet):
                 if attempt + 1 == max_tries:
                     raise
                 continue
+
+
+def popular_blogs(request):
+    blogs = Blog.objects.all().order_by('-created_at')[:3]
+
+    blogs_list = list(
+        blogs.values("id", "title", "image_url", "description", "created_at", 'slug')
+    )
+
+    return JsonResponse(blogs_list, safe=False)
 
 
 class NewsCommentViewSet(viewsets.ModelViewSet):
