@@ -20,7 +20,7 @@ from django.contrib.auth import get_user_model
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
-
+from django.db.models import Prefetch
 from .models import Blog
 
 
@@ -419,7 +419,7 @@ class MatchDataExtractor(View):
 class BaseModelViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticatedOrReadOnly]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    pagination_class = None  # keep default; set custom pagination in settings if desired
+    pagination_class = None 
 
 
 class ContinentViewSet(BaseModelViewSet):
@@ -473,6 +473,7 @@ class ContractViewSet(BaseModelViewSet):
 class CompetitionViewSet(BaseModelViewSet):
     queryset = models.Competition.objects.select_related("country").all()
     serializer_class = serializers.CompetitionSerializer
+    permission_classes = [AllowAny]
     filterset_fields = ["type", "country", "season"]
     search_fields = ["name", "title", "season"]
     ordering_fields = ["name", "season"]
@@ -488,7 +489,18 @@ class SeasonViewSet(BaseModelViewSet):
 
 
 class GroupViewSet(BaseModelViewSet):
-    queryset = models.Group.objects.select_related("season", "competition").prefetch_related("teams").all()
+    queryset = (
+        models.Group.objects.select_related("season", "competition") 
+        .prefetch_related(
+            Prefetch(
+                "groupteam_set",
+                queryset=models.GroupTeam.objects.select_related("team"),
+                to_attr="group_teams",
+            )
+        )
+        .all()
+    )
+
     serializer_class = serializers.GroupSerializer
     filterset_fields = ["season", "competition"]
     search_fields = ["name"]
@@ -519,9 +531,9 @@ class MatchEventViewSet(BaseModelViewSet):
 class SeasonTeamViewSet(BaseModelViewSet):
     queryset = models.SeasonTeam.objects.select_related("season", "team").all()
     serializer_class = serializers.SeasonTeamSerializer
-    filterset_fields = ["season", "team", "position"]
+    filterset_fields = ["season", "team"]
     search_fields = ["team__name"]
-    ordering_fields = ["points", "position"]
+    ordering_fields = ["points"]
 
 
 class SeasonMatchViewSet(BaseModelViewSet):
@@ -606,3 +618,7 @@ class NewsCommentViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         # create comment (no extra behavior here) -- moderation flag defaults to False
         serializer.save()
+
+
+
+

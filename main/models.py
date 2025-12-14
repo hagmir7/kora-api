@@ -154,6 +154,7 @@ class Season(models.Model):
     competition = models.ForeignKey(Competition, on_delete=models.CASCADE, related_name='seasons')
     start_date = models.DateField()
     end_date = models.DateField()
+    url = models.URLField(max_length=500, blank=True, null=True)
 
     def clean(self):
         if self.start_date and self.end_date and self.start_date > self.end_date:
@@ -164,14 +165,50 @@ class Season(models.Model):
 
     class Meta:
         ordering = ["-start_date"]
+        unique_together = ["name", "competition", "url"]
 
 
 class Group(models.Model):
     name = models.CharField(max_length=100)
-    season = models.ForeignKey(Season, on_delete=models.CASCADE, related_name="groups")
-    competition = models.ForeignKey(Competition, on_delete=models.CASCADE, related_name='groups')
-    teams = models.ManyToManyField(Team, related_name="groups")
+    season = models.ForeignKey(Season, on_delete=models.CASCADE)
+    competition = models.ForeignKey(Competition, on_delete=models.CASCADE)
     description = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return self.name
+
+
+class GroupTeam(models.Model):
+    team = models.ForeignKey(Team, on_delete=models.CASCADE)
+    group = models.ForeignKey(Group, on_delete=models.CASCADE)
+    played = models.IntegerField(default=0)
+    won = models.IntegerField(default=0)
+    draw = models.IntegerField(default=0)
+    lost = models.IntegerField(default=0)
+    against = models.CharField(max_length=10, null=True, blank=True)
+    difference = models.IntegerField(default=0)
+    points = models.IntegerField(default=0)
+    hero = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.team.name} {self.group.name}"
+
+
+class SeasonTeam(models.Model):
+    team = models.ForeignKey(Team, on_delete=models.CASCADE)
+    season = models.ForeignKey(Season, on_delete=models.CASCADE)
+    played = models.IntegerField(default=0)
+    won = models.IntegerField(default=0)
+    draw = models.IntegerField(default=0)
+    lost = models.IntegerField(default=0)
+    against = models.CharField(max_length=10, null=True, blank=True)
+    difference = models.IntegerField(default=0)
+    points = models.IntegerField(default=0)
+    hero = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.team.name} - {self.season.name} {'🏆' if self.hero else ''}"
+
 
 class Match(models.Model):
     competition = models.ForeignKey(Competition, on_delete=models.CASCADE, related_name='matches')
@@ -232,20 +269,6 @@ class MatchEvent(models.Model):
 
     def __str__(self):
         return f"{self.get_event_type_display()} - {self.match} ({self.minute}')"
-
-
-class SeasonTeam(models.Model):
-    season = models.ForeignKey(Season, on_delete=models.CASCADE, related_name='season_teams')
-    team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name='season_teams')
-    points = models.IntegerField(default=0)
-    position = models.IntegerField(blank=True, null=True)
-
-
-    class Meta:
-        unique_together = ('season', 'team')
-
-    def __str__(self):
-        return f"{self.team} in {self.season}"
 
 
 class SeasonMatch(models.Model):

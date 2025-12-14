@@ -248,6 +248,7 @@ class CompetitionSerializer(serializers.ModelSerializer):
     )
     slug = serializers.ReadOnlyField()
 
+
     class Meta:
         model = models.Competition
         fields = [
@@ -274,37 +275,39 @@ class SeasonSerializer(serializers.ModelSerializer):
         return data
 
 
-class GroupSerializer(serializers.ModelSerializer):
-    season = SeasonSerializer(read_only=True)
-    season_id = serializers.PrimaryKeyRelatedField(
-        queryset=models.Season.objects.all(), write_only=True, source="season"
-    )
-    competition = CompetitionSerializer(read_only=True)
-    competition_id = serializers.PrimaryKeyRelatedField(
-        queryset=models.Competition.objects.all(), write_only=True, source="competition"
-    )
-    teams = TeamSerializer(many=True, read_only=True)
-    team_ids = serializers.PrimaryKeyRelatedField(
-        queryset=models.Team.objects.all(), many=True, write_only=True, source="teams"
+class GroupTeamSerializer(serializers.ModelSerializer):
+    team = TeamSerializer(read_only=True)
+    team_id = serializers.PrimaryKeyRelatedField(
+        queryset=models.Team.objects.all(), write_only=True, source="team"
     )
 
     class Meta:
+        model = models.GroupTeam
+        fields = [
+            "id",
+            "team",
+            "team_id",
+            "played",
+            "won",
+            "draw",
+            "lost",
+            "against",
+            "difference",
+            "points",
+            "hero",
+        ]
+
+
+class GroupSerializer(serializers.ModelSerializer):
+    group_teams = GroupTeamSerializer(source="groupteam_set", many=True, read_only=True)
+
+    class Meta:
         model = models.Group
-        fields = ["id", "name", "season", "season_id", "competition", "competition_id", "teams", "team_ids", "description"]
-
-    def create(self, validated_data):
-        teams = validated_data.pop("teams", [])
-        group = super().create(validated_data)
-        if teams:
-            group.teams.set(teams)
-        return group
-
-    def update(self, instance, validated_data):
-        teams = validated_data.pop("teams", None)
-        instance = super().update(instance, validated_data)
-        if teams is not None:
-            instance.teams.set(teams)
-        return instance
+        fields = [
+            "id",
+            "name",
+            "group_teams",
+        ]
 
 
 class MatchSerializer(serializers.ModelSerializer):
@@ -365,7 +368,22 @@ class SeasonTeamSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.SeasonTeam
-        fields = ["id", "season", "season_id", "team", "team_id", "points", "position"]
+        fields = [
+            "id",
+            "season",
+            "season_id",
+            "team",
+            "team_id",
+            "points",
+            "played",
+            "won",
+            "draw",
+            "lost",
+            "against",
+            "points",
+            "difference",
+            "hero",
+        ]
 
 
 class SeasonMatchSerializer(serializers.ModelSerializer):
@@ -454,3 +472,19 @@ class BlogSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         return super().update(instance, validated_data)
+
+
+class CompetitionMatcheSerializer(serializers.ModelSerializer):
+    country = CountrySerializer(read_only=True)
+    country_id = serializers.PrimaryKeyRelatedField(
+        queryset=models.Country.objects.all(), write_only=True, source="country", required=False, allow_null=True
+    )
+
+    matches = MatchSerializer(read_only=True)
+    class Meta:
+        model = models.Competition
+        fields = [
+            "id", "title", "slug", "team", "team_id", "match", "match_id",
+            "image_url", "description", "tags", "body", "created_at", "category", "category_id", "comments"
+        ]
+        read_only_fields = ["created_at", "slug", "comments"]
