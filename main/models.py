@@ -348,3 +348,4 @@ class NewsComment(models.Model):
         if self.parent:
             return f"Reply by {self.user_name} on {self.blog.title}"
         return f"Comment by {self.user_name} on {self.blog.title}"
+

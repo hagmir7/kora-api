@@ -276,9 +276,9 @@ class SeasonSerializer(serializers.ModelSerializer):
 
 
 class GroupTeamSerializer(serializers.ModelSerializer):
-    team = TeamSerializer(read_only=True)
-    team_id = serializers.PrimaryKeyRelatedField(
-        queryset=models.Team.objects.all(), write_only=True, source="team"
+    team_name = serializers.CharField(source="team.arabic_name", read_only=True)
+    team_logo = serializers.ImageField(
+        source="team.logo_url", read_only=True, use_url=True
     )
 
     class Meta:
@@ -286,7 +286,8 @@ class GroupTeamSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "team",
-            "team_id",
+            "team_name",
+            "team_logo",
             "played",
             "won",
             "draw",
@@ -474,17 +475,140 @@ class BlogSerializer(serializers.ModelSerializer):
         return super().update(instance, validated_data)
 
 
-class CompetitionMatcheSerializer(serializers.ModelSerializer):
-    country = CountrySerializer(read_only=True)
-    country_id = serializers.PrimaryKeyRelatedField(
-        queryset=models.Country.objects.all(), write_only=True, source="country", required=False, allow_null=True
-    )
+class CompetitionSeasonsSerializer(serializers.ModelSerializer):
+    seasons = SeasonSerializer(many=True, read_only=True)
 
-    matches = MatchSerializer(read_only=True)
     class Meta:
         model = models.Competition
         fields = [
-            "id", "title", "slug", "team", "team_id", "match", "match_id",
-            "image_url", "description", "tags", "body", "created_at", "category", "category_id", "comments"
+            "id",
+            "name",
+            "title",
+            "type",
+            "season",
+            "country",
+            "logo",
+            "slug",
+            "seasons",
         ]
-        read_only_fields = ["created_at", "slug", "comments"]
+
+
+class GroupWithTeamsSerializer(serializers.ModelSerializer):
+    teams = GroupTeamSerializer(source="groupteam_set", many=True, read_only=True)
+    season_name = serializers.CharField(source="season.name", read_only=True)
+
+    class Meta:
+        model = models.Group
+        fields = [
+            "id",
+            "name",
+            "season",
+            "season_name",
+            "teams",
+        ]
+
+
+class CompetitionTeamSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(source="arabic_name", read_only=True)
+    logo = serializers.ImageField(source="logo_url", read_only=True, use_url=True)
+
+    class Meta:
+        model = models.Team
+        fields = [
+            "id",
+            "name",
+            "slug",
+            "logo",
+            "code",
+        ]
+
+
+class CompetitionSeasonTeamSerializer(serializers.ModelSerializer):
+    team_name = serializers.CharField(source="team.arabic_name", read_only=True)
+    team_slug = serializers.CharField(source="team.slug", read_only=True)
+    team_logo = serializers.ImageField(
+        source="team.logo_url", read_only=True, use_url=True
+    )
+
+    class Meta:
+        model = models.SeasonTeam
+        fields = [
+            "id",
+            "team",
+            "team_name",
+            "team_slug",
+            "team_logo",
+            "played",
+            "won",
+            "draw",
+            "lost",
+            "against",
+            "difference",
+            "points",
+            "hero",
+        ]
+
+
+class MatchTeamSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(source="arabic_name", read_only=True)
+    logo = serializers.ImageField(source="logo_url", read_only=True, use_url=True)
+
+    class Meta:
+        model = models.Team
+        fields = ["id", "name", "slug", "logo"]
+
+
+class CompetitionMatchSerializer(serializers.ModelSerializer):
+    home_team = MatchTeamSerializer(read_only=True)
+    away_team = MatchTeamSerializer(read_only=True)
+    round = serializers.IntegerField(
+        source="season_matches.first.round", read_only=True
+    )
+
+    class Meta:
+        model = models.Match
+        fields = [
+            "id",
+            "home_team",
+            "away_team",
+            "date_time",
+            "venue",
+            "home_score",
+            "away_score",
+            "status",
+            "round",
+            "code",
+        ]
+
+
+class CompetitionPlayerSerializer(serializers.ModelSerializer):
+    player_name = serializers.CharField(source="player.name", read_only=True)
+    player_slug = serializers.CharField(source="player.slug", read_only=True)
+    player_photo = serializers.ImageField(
+        source="player.photo_url", read_only=True, use_url=True
+    )
+
+    team_name = serializers.CharField(source="team.arabic_name", read_only=True)
+    team_slug = serializers.CharField(source="team.slug", read_only=True)
+    team_logo = serializers.ImageField(
+        source="team.logo_url", read_only=True, use_url=True
+    )
+
+    class Meta:
+        model = models.SeasonPlayer
+        fields = [
+            "id",
+            "player",
+            "player_name",
+            "player_slug",
+            "player_photo",
+            "team",
+            "team_name",
+            "team_slug",
+            "team_logo",
+            "goals",
+            "assists",
+            "yellow_cards",
+            "red_cards",
+            "rating",
+        ]

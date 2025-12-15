@@ -1,4 +1,4 @@
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from django.http import JsonResponse
 from django.views import View
 from bs4 import BeautifulSoup
@@ -21,7 +21,9 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 from django.db.models import Prefetch
-from .models import Blog
+from .models import Blog, Competition, Group, Season
+from rest_framework.decorators import api_view
+from .serializers import CompetitionSeasonsSerializer
 
 
 from .serializers import (
@@ -29,6 +31,10 @@ from .serializers import (
     LoginSerializer,
     UserSerializer,
     ChangePasswordSerializer,
+    GroupWithTeamsSerializer,
+    CompetitionSeasonTeamSerializer,
+    CompetitionMatchSerializer,
+    CompetitionPlayerSerializer,
 )
 
 
@@ -620,5 +626,184 @@ class NewsCommentViewSet(viewsets.ModelViewSet):
         serializer.save()
 
 
+@api_view(["GET"])
+def competition_seasons(request, slug):
+    competition = get_object_or_404(
+        Competition.objects.prefetch_related("seasons"), slug=slug
+    )
+    serializer = CompetitionSeasonsSerializer(competition)
+    return Response(serializer.data)
 
 
+def normalize_season(value: str) -> str:
+    """
+    Accepts:
+    - 2024-2025
+    - 2024/2025
+    Returns:
+    - 2024/2025
+    """
+    return value.replace("-", "/")
+
+from rest_framework.decorators import api_view, permission_classes
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def competition_groups_teams(request, slug):
+    competition = get_object_or_404(Competition, slug=slug)
+
+    season_param = request.GET.get("season")
+    if not season_param:
+        return Response(
+            {"detail": "season query parameter is required"},
+            status=400
+        )
+
+    season_name = normalize_season(season_param)
+
+    season = get_object_or_404(
+        Season,
+        competition=competition,
+        name=season_name
+    )
+
+    groups = (
+        Group.objects
+        .filter(competition=competition, season=season)
+        .select_related("season")
+        .prefetch_related("groupteam_set__team")
+        .order_by("name")
+    )
+
+    serializer = GroupWithTeamsSerializer(groups, many=True)
+
+    return Response({
+        "competition": {
+            "id": competition.id,
+            "name": competition.name,
+            "slug": competition.slug,
+        },
+        "season": {
+            "id": season.id,
+            "name": season.name,
+        },
+        "groups": serializer.data
+    })
+
+
+@api_view(["GET"])
+def competition_teams(request, slug):
+    competition = get_object_or_404(models.Competition, slug=slug)
+
+    season_param = request.GET.get("season")
+    if not season_param:
+        return Response({"detail": "Season query parameter is required"}, status=400)
+
+    season_name = normalize_season(season_param)
+
+    season = get_object_or_404(models.Season, competition=competition, name=season_name)
+
+    season_teams = (
+        models.SeasonTeam.objects.filter(season=season)
+        .select_related("team", "season")
+        .order_by("-points", "-difference")
+    )
+
+    serializer = CompetitionSeasonTeamSerializer(
+        season_teams, many=True, context={"request": request}
+    )
+
+    return Response(
+        {
+            "competition": {
+                "id": competition.id,
+                "name": competition.name,
+                "slug": competition.slug,
+            },
+            "season": {
+                "id": season.id,
+                "name": season.name,
+            },
+            "teams": serializer.data,
+        }
+    )
+
+
+@api_view(["GET"])
+def competition_matches(request, slug):
+    competition = get_object_or_404(models.Competition, slug=slug)
+
+    season_param = request.GET.get("season")
+    if not season_param:
+        return Response({"detail": "Season query parameter is required"}, status=400)
+
+    season_name = normalize_season(season_param)
+
+    season = get_object_or_404(models.Season, competition=competition, name=season_name)
+
+    matches = (
+        models.Match.objects.filter(
+            competition=competition, season_matches__season=season
+        )
+        .select_related("home_team", "away_team")
+        .prefetch_related("season_matches")
+        .order_by("season_matches__round", "date_time")
+        .distinct()
+    )
+
+    serializer = CompetitionMatchSerializer(
+        matches, many=True, context={"request": request}
+    )
+
+    return Response(
+        {
+            "competition": {
+                "id": competition.id,
+                "name": competition.name,
+                "slug": competition.slug,
+            },
+            "season": {
+                "id": season.id,
+                "name": season.name,
+            },
+            "matches": serializer.data,
+        }
+    )
+
+
+@api_view(["GET"])
+def competition_players(request, slug):
+    competition = get_object_or_404(models.Competition, slug=slug)
+
+    season_param = request.GET.get("season")
+    if not season_param:
+        return Response({"detail": "Season query parameter is required"}, status=400)
+
+    season_name = normalize_season(season_param)
+
+    season = get_object_or_404(models.Season, competition=competition, name=season_name)
+
+    players = (
+        models.SeasonPlayer.objects.filter(season=season)
+        .select_related("player", "team", "season")
+        .order_by("-goals", "-assists", "-rating")
+    )
+
+    serializer = CompetitionPlayerSerializer(
+        players, many=True, context={"request": request}
+    )
+
+    return Response(
+        {
+            "competition": {
+                "id": competition.id,
+                "name": competition.name,
+                "slug": competition.slug,
+            },
+            "season": {
+                "id": season.id,
+                "name": season.name,
+            },
+            "players": serializer.data,
+        }
+    )
