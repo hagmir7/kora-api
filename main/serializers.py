@@ -475,6 +475,26 @@ class BlogSerializer(serializers.ModelSerializer):
         return super().update(instance, validated_data)
 
 
+
+
+class BlogListSerializer(serializers.ModelSerializer):
+
+    category = CategorySerializer(read_only=True)
+    category_id = serializers.PrimaryKeyRelatedField(
+        queryset=models.Category.objects.all(), write_only=True, source="category"
+    )
+    tags = TagListField()
+    slug = serializers.ReadOnlyField()
+
+    class Meta:
+        model = models.Blog
+        fields = [
+            "id", "title", "slug", "image_url", "description", 
+            "tags",  "created_at", "category", "category_id"
+        ]
+        read_only_fields = ["created_at", "slug"]
+
+
 class CompetitionSeasonsSerializer(serializers.ModelSerializer):
     seasons = SeasonSerializer(many=True, read_only=True)
 

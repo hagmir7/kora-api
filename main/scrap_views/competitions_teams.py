@@ -146,8 +146,8 @@ def scrape_team_standings(request):
         season, season_created = Season.objects.get_or_create(
             name=season_name,
             competition=competition,
-            url=url,  # Include URL in the lookup
             defaults={
+                "url": url,
                 "start_date": start_date,
                 "end_date": end_date,
             },

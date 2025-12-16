@@ -35,6 +35,7 @@ from .serializers import (
     CompetitionSeasonTeamSerializer,
     CompetitionMatchSerializer,
     CompetitionPlayerSerializer,
+    BlogListSerializer,
 )
 
 
@@ -572,14 +573,18 @@ class BlogViewSet(BaseModelViewSet):
         .prefetch_related("comments")
         .all()
     )
-    serializer_class = serializers.BlogSerializer
+
     filterset_fields = ["team", "match", "category", "created_at"]
     search_fields = ["title", "description", "body", "tags"]
     ordering_fields = ["created_at", "title"]
     ordering = ["-created_at"]
     pagination_class = BlogPagination
-
     lookup_field = "slug"
+
+    def get_serializer_class(self):
+        if self.action == "list":
+            return serializers.BlogListSerializer
+        return serializers.BlogSerializer
 
     def perform_create(self, serializer):
         max_tries = 3

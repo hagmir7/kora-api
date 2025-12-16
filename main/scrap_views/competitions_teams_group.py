@@ -609,8 +609,8 @@ def scrape_groups_competition(request):
         season, season_created = Season.objects.get_or_create(
             name=season_name,
             competition=competition,
-            url=url,
             defaults={
+                "url": url,
                 "start_date": start_date,
                 "end_date": end_date,
             },

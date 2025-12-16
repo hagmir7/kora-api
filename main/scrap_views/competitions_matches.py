@@ -202,8 +202,8 @@ def scrape_competition_matches(request):
         season, season_created = Season.objects.get_or_create(
             name=season_name,
             competition=competition,
-            url=url,
             defaults={
+                "url": url,
                 "start_date": start_date,
                 "end_date": end_date,
             },
@@ -215,14 +215,14 @@ def scrape_competition_matches(request):
 
         # Find all matchday lists
         matchday_lists = soup.find_all('ul', class_='matchday_list')
-        
+
         stats = {
             'total_matches': 0,
             'created': 0,
             'updated': 0,
             'errors': []
         }
-        
+
         current_round = None
 
         for matchday in matchday_lists:
