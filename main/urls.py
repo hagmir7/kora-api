@@ -46,6 +46,12 @@ urlpatterns = [
         views.ChangePasswordView.as_view(),
         name="auth-change-password",
     ),
+    path("blogs/<slug:slug>/comments",views.BlogCommentsView.as_view()),
+    path(
+        "categories/<slug:slug>/blogs",
+        views.CategoryBlogsView.as_view(),
+        name="category-blogs",
+    ),
     path("competitions/<slug:slug>/seasons", views.competition_seasons),
     path("competitions/<slug:slug>/groups", views.competition_groups_teams),
     path("competitions/<slug:slug>/teams", views.competition_teams),

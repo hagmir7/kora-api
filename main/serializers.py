@@ -442,6 +442,40 @@ class NewsCommentSerializer(serializers.ModelSerializer):
         fields = ["id", "blog", "user_name", "user_email", "content", "parent", "is_approved", "created_at", "updated_at"]
 
 
+class NewsCommentWriteSerializer(serializers.ModelSerializer):
+    parent = serializers.PrimaryKeyRelatedField(
+        queryset=models.NewsComment.objects.all(), required=False, allow_null=True
+    )
+
+    class Meta:
+        model = models.NewsComment
+        fields = [
+            "blog",
+            "user_name",
+            "user_email",
+            "content",
+            "parent",
+        ]
+
+
+class NewsCommentReadSerializer(serializers.ModelSerializer):
+    replies = serializers.SerializerMethodField()
+
+    class Meta:
+        model = models.NewsComment
+        fields = [
+            "id",
+            "user_name",
+            "content",
+            "created_at",
+            "replies",
+        ]
+
+    def get_replies(self, obj):
+        replies = obj.replies.filter(is_approved=True)
+        return NewsCommentReadSerializer(replies, many=True).data
+
+
 class BlogSerializer(serializers.ModelSerializer):
     team = TeamSerializer(read_only=True)
     team_id = serializers.PrimaryKeyRelatedField(
@@ -473,8 +507,6 @@ class BlogSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         return super().update(instance, validated_data)
-
-
 
 
 class BlogListSerializer(serializers.ModelSerializer):
@@ -632,3 +664,9 @@ class CompetitionPlayerSerializer(serializers.ModelSerializer):
             "red_cards",
             "rating",
         ]
+
+
+class CategoryBlogSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Blog
+        fields = ["id", "title", "slug", "image_url", "created_at"]

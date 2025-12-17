@@ -5,6 +5,7 @@ from bs4 import BeautifulSoup
 import requests
 import logging
 from urllib.parse import urljoin
+from rest_framework.generics import ListAPIView
 import re
 from functools import lru_cache
 from datetime import datetime, timedelta
@@ -565,6 +566,7 @@ class CategoryViewSet(BaseModelViewSet):
     filterset_fields = ["name"]
     search_fields = ["name"]
     ordering_fields = ["name"]
+    lookup_field = 'slug'
 
 
 class BlogViewSet(BaseModelViewSet):
@@ -812,3 +814,55 @@ def competition_players(request, slug):
             "players": serializer.data,
         }
     )
+
+
+class CategoryBlogsView(ListAPIView):
+    serializer_class = serializers.CategoryBlogSerializer
+    pagination_class = BlogPagination
+
+    def get_category(self):
+        return get_object_or_404(models.Category, slug=self.kwargs["slug"])
+
+    def get_queryset(self):
+        category = self.get_category()
+        return (
+            models.Blog.objects.filter(category=category)
+            .select_related("category")
+            .order_by("-created_at")
+        )
+
+    def list(self, request, *args, **kwargs):
+        category = self.get_category()
+
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+
+        serializer = self.get_serializer(page, many=True)
+
+        return self.get_paginated_response(
+            {
+                "category": {
+                    "id": category.id,
+                    "name": category.name,
+                    "slug": category.slug,
+                },
+                "blogs": serializer.data,
+            }
+        )
+
+from rest_framework.generics import ListCreateAPIView
+
+
+class BlogCommentsView(ListAPIView):
+    serializer_class = serializers.NewsCommentReadSerializer
+    permission_classes = []  # AllowAny
+    pagination_class = BlogPagination
+
+    def get_queryset(self):
+        blog = get_object_or_404(Blog, slug=self.kwargs["slug"])
+
+        return (
+            models.NewsComment.objects.filter(blog=blog, parent__isnull=True, is_approved=True)
+            .prefetch_related("replies")
+            .order_by("-created_at")
+        )
