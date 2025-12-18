@@ -66,7 +66,7 @@ class Team(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            self.slug = generate_unique_slug(self, field_name='arabic_name', slug_field='slug')
+            self.slug = generate_unique_slug(self, field_name="name", slug_field="slug")
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -94,7 +94,7 @@ class Player(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            self.slug = generate_unique_slug(self, field_name='arabic_name', slug_field='slug')
+            self.slug = generate_unique_slug(self, field_name='name', slug_field='slug')
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -348,4 +348,3 @@ class NewsComment(models.Model):
         if self.parent:
             return f"Reply by {self.user_name} on {self.blog.title}"
         return f"Comment by {self.user_name} on {self.blog.title}"
-

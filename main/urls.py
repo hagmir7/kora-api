@@ -7,7 +7,7 @@ from .scrap_views.competitions_teams import scrape_competition_teams
 from .scrap_views.competitions_teams_group import scrape_groups_competition
 from .scrap_views.competitions_matches import scrape_competition_matches
 from .scrap_views.competition_players import scrape_competition_players
-
+from .scrap_views.match import get_match
 # Create router
 router = DefaultRouter(trailing_slash=False)
 
@@ -46,7 +46,7 @@ urlpatterns = [
         views.ChangePasswordView.as_view(),
         name="auth-change-password",
     ),
-    path("blogs/<slug:slug>/comments",views.BlogCommentsView.as_view()),
+    path("blogs/<slug:slug>/comments", views.BlogCommentsView.as_view()),
     path(
         "categories/<slug:slug>/blogs",
         views.CategoryBlogsView.as_view(),
@@ -63,4 +63,5 @@ urlpatterns = [
     path("scrape/competition_groups", scrape_groups_competition),
     path("scrape/competition_matches", scrape_competition_matches),
     path("scrape/competition_players", scrape_competition_players),
+    path("scrape/match", get_match),
 ]

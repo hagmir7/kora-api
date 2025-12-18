@@ -522,6 +522,8 @@ class MatchViewSet(BaseModelViewSet):
     search_fields = ["home_team__name", "away_team__name"]
     ordering_fields = ["date_time", "status"]
 
+    lookup_field = "code"
+
     def perform_create(self, serializer):
         # Example: wrap save in a transaction to be safe if many related objects are touched
         with transaction.atomic():
@@ -855,7 +857,7 @@ from rest_framework.generics import ListCreateAPIView
 
 class BlogCommentsView(ListAPIView):
     serializer_class = serializers.NewsCommentReadSerializer
-    permission_classes = []  # AllowAny
+    permission_classes = []
     pagination_class = BlogPagination
 
     def get_queryset(self):
